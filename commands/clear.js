@@ -1,6 +1,12 @@
+import { checkPermissions } from "../middlewares/permissionMiddleware.js";
+
 export default {
   description: 'Elimina un número específico de mensajes o todos los mensajes si no se proporciona un número.',
   run: async (message, args) => {
+    const hasPermission = await checkPermissions(message);
+
+    if (!hasPermission) return;
+
     try {
       if (args.length === 0) {
         // Eliminar todos los mensajes en el canal
