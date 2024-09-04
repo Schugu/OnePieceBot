@@ -30,7 +30,7 @@ export default {
 
         const embed = new EmbedBuilder()
           .setTitle('Personajes One Piece')
-          .setColor('orange')
+          .setColor('#0099ff')
           .setDescription(
             charactersPage.map((character, index) => `${start + index + 1}. ${character.name}`).join('\n')
           )
