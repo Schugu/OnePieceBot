@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const client = new Client({
+export const client = new Client({
   intents: 53608447
 });
 
@@ -26,5 +26,3 @@ client.on(Events.MessageCreate, async (message) => {
     message.reply(`No puedo ejecutar el comando ${commandName}. ¿Está escrito correctamente?`);
   }
 });
-
-client.login(process.env.BOT_TOKEN);
