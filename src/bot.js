@@ -10,7 +10,7 @@ export const client = new Client({
 client.on(Events.ClientReady, () => {
   console.log(`Conectado como ${client.user.username}!`);
 });
-
+ 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
   if (!message.content.startsWith('!')) return;

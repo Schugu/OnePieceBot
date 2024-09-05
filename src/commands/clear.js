@@ -9,14 +9,18 @@ export default {
 
     try {
       if (args.length === 0) {
-        // Eliminar todos los mensajes en el canal
         let fetched;
         do {
           fetched = await message.channel.messages.fetch({ limit: 100 });
-          await message.channel.bulkDelete(fetched, true); // true para ignorar mensajes que no se pueden eliminar (como los más antiguos)
-        } while (fetched.size >= 2); // Continúa eliminando mientras haya mensajes
+          if (fetched.size === 0) break;
 
-        // Enviar un mensaje de confirmación después de eliminar los mensajes
+          const messagesToDelete = fetched.filter(msg => {
+            return (Date.now() - msg.createdTimestamp) < 14 * 24 * 60 * 60 * 1000;
+          });
+
+          await message.channel.bulkDelete(messagesToDelete, true);
+        } while (fetched.size >= 2);
+
         await message.channel.send('Se han eliminado todos los mensajes en este canal.');
       } else {
         const amount = parseInt(args[0]);
@@ -25,16 +29,27 @@ export default {
           return message.reply('Por favor, proporciona un número entre 1 y 100.');
         }
 
-        // Eliminar una cantidad específica de mensajes
         const fetched = await message.channel.messages.fetch({ limit: amount + 1 });
-        await message.channel.bulkDelete(fetched, true);
+        const messagesToDelete = fetched.filter(msg => {
+          return (Date.now() - msg.createdTimestamp) < 14 * 24 * 60 * 60 * 1000;
+        });
 
-        // Enviar un mensaje de confirmación después de eliminar los mensajes
-        await message.channel.send(`Se han eliminado ${amount} mensajes.`);
+        if (messagesToDelete.size === 0) {
+          return message.reply('No se encontraron mensajes que pudieran eliminarse (los mensajes de más de 14 días no se pueden eliminar).');
+        }
+
+        await message.channel.bulkDelete(messagesToDelete, true);
+
+        await message.channel.send(`Se han eliminado ${messagesToDelete.size - 1} mensajes.`);
       }
     } catch (error) {
       console.error('Error al eliminar mensajes:', error);
-      message.reply('Hubo un problema al intentar eliminar los mensajes.');
+
+      if (error.code === 10008) {
+        message.reply('Algunos mensajes no pudieron eliminarse porque ya no existen.');
+      } else {
+        message.reply('Hubo un problema al intentar eliminar los mensajes.');
+      }
     }
   }
 };
