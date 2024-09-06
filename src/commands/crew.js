@@ -1,5 +1,6 @@
 import fetch from 'node-fetch';
-import { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
+import { createButtonRow } from "../utils/createButtonRow.js";
 
 const PAGE_SIZE = 10;
 const MAX_RETRIES = 3;
@@ -15,7 +16,7 @@ const formatIdNameChar = (crew) => `**${crew.id ?? 'X'}**: ${crew.name || 'No di
 
 const createDetailedEmbed = (title, crews) => new EmbedBuilder()
   .setTitle(title)
-  .setColor('#0099ff')
+  .setColor('#ff4000')
   .setDescription(crews.map(formatCrewMessage).join('\n'));
 
 const generateNameOnlyEmbed = (title, crews, page, totalPages) => {
@@ -25,23 +26,10 @@ const generateNameOnlyEmbed = (title, crews, page, totalPages) => {
 
   return new EmbedBuilder()
     .setTitle(title)
-    .setColor('#0099ff')
+    .setColor('#ff4000')
     .setDescription(crewsPage.map(formatIdNameChar).join('\n'))
     .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
 };
-
-const createButtonRow = (currentPage, totalPages) => new ActionRowBuilder().addComponents(
-  new ButtonBuilder()
-    .setCustomId('prev')
-    .setLabel('⬅️ Anterior')
-    .setStyle(ButtonStyle.Primary)
-    .setDisabled(currentPage === 0),
-  new ButtonBuilder()
-    .setCustomId('next')
-    .setLabel('➡️ Siguiente')
-    .setStyle(ButtonStyle.Primary)
-    .setDisabled(currentPage === totalPages - 1)
-);
 
 const fetchCrewData = async (url, retries = MAX_RETRIES) => {
   try {
@@ -89,7 +77,7 @@ export default {
 
         const embedMessage = await message.channel.send({
           embeds: [generateNameOnlyEmbed(`Resultados para "${crewName}"`, crewData, currentPage, totalPages)],
-          components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [], 
+          components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [],
         });
 
         if (totalPages > 1) {
@@ -104,14 +92,22 @@ export default {
               currentPage++;
             }
 
-            await interaction.update({
-              embeds: [generateNameOnlyEmbed(`Resultados para "${crewName}"`, crewData, currentPage, totalPages)],
-              components: [createButtonRow(currentPage, totalPages)],
-            });
+            try {
+              await interaction.update({
+                embeds: [generateNameOnlyEmbed(`Resultados para "${crewName}"`, crewData, currentPage, totalPages)],
+                components: [createButtonRow(currentPage, totalPages)],
+              });
+            } catch (error) {
+              console.error('Error al actualizar la interacción:', error);
+            }
           });
 
-          collector.on('end', () => {
-            embedMessage.edit({ components: [] });
+          collector.on('end', async () => {
+            try {
+              await embedMessage.edit({ components: [] });
+            } catch (error) {
+              console.error('Error al editar el mensaje después de que el collector terminó:', error);
+            }
           });
         }
       }
