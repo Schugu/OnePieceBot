@@ -1,6 +1,8 @@
-import { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle } from 'discord.js';
+import fetch from 'node-fetch';
+import { EmbedBuilder } from 'discord.js';
+import { createButtonRow } from '../utils/createButtonRow.js';
 
-const PAGE_SIZE = 10; 
+const PAGE_SIZE = 10;
 
 export default {
   name: 'characters',
@@ -22,44 +24,25 @@ export default {
       }
 
       let currentPage = 0;
+      const totalPages = Math.ceil(characters.length / PAGE_SIZE);
 
       const generateEmbed = (page) => {
         const start = page * PAGE_SIZE;
         const end = start + PAGE_SIZE;
         const charactersPage = characters.slice(start, end);
 
-        const embed = new EmbedBuilder()
+        return new EmbedBuilder()
           .setTitle('Personajes One Piece')
-          .setColor('#0099ff')
+          .setColor('#ff4000')
           .setDescription(
             charactersPage.map((character, index) => `${start + index + 1}. ${character.name}`).join('\n')
           )
-          .setFooter({ text: `Página ${page + 1} de ${Math.ceil(characters.length / PAGE_SIZE)}` });
-
-        return embed;
-      };
-
-      const createActionRow = (page) => {
-        const isFirstPage = page === 0;
-        const isLastPage = page === Math.ceil(characters.length / PAGE_SIZE) - 1;
-
-        return new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('prev')
-            .setLabel('⬅️ Atrás')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(isFirstPage),
-          new ButtonBuilder()
-            .setCustomId('next')
-            .setLabel('➡️ Adelante')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(isLastPage)
-        );
+          .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
       };
 
       const embedMessage = await message.channel.send({
         embeds: [generateEmbed(currentPage)],
-        components: [createActionRow(currentPage)],
+        components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [],
       });
 
       const collector = embedMessage.createMessageComponentCollector({ time: 300000 });
@@ -69,18 +52,22 @@ export default {
 
         if (interaction.customId === 'prev' && currentPage > 0) {
           currentPage--;
-        } else if (interaction.customId === 'next' && currentPage < Math.ceil(characters.length / PAGE_SIZE) - 1) {
+        } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
           currentPage++;
         }
 
         await interaction.update({
           embeds: [generateEmbed(currentPage)],
-          components: [createActionRow(currentPage)],
+          components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [],
         });
       });
 
-      collector.on('end', () => {
-        embedMessage.edit({ components: [] });
+      collector.on('end', async () => {
+        try {
+          await embedMessage.edit({ components: [] });
+        } catch (error) {
+          console.error('Error editing message after collector ended:', error);
+        }
       });
 
     } catch (error) {
