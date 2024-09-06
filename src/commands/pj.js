@@ -1,7 +1,8 @@
 import fetch from 'node-fetch';
-import { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
+import { createButtonRow } from "../utils/createButtonRow.js";
 
-const PAGE_SIZE = 10; 
+const PAGE_SIZE = 10;
 const MAX_RETRIES = 3;
 
 const formatCharacterMessage = (character) => `
@@ -19,7 +20,7 @@ const formatIdNameChar = (character) => `**${character.id ?? 'X'}**: ${character
 
 const createDetailedEmbed = (title, characters) => new EmbedBuilder()
   .setTitle(title)
-  .setColor('#0099ff')
+  .setColor('#ff4000')
   .setDescription(characters.map(formatCharacterMessage).join('\n'));
 
 const generateNameOnlyEmbed = (title, characters, page, totalPages) => {
@@ -29,7 +30,7 @@ const generateNameOnlyEmbed = (title, characters, page, totalPages) => {
 
   return new EmbedBuilder()
     .setTitle(title)
-    .setColor('#0099ff')
+    .setColor('#ff4000')
     .setDescription(
       charactersPage.map(formatIdNameChar).join('\n')
     )
@@ -82,22 +83,9 @@ export default {
         let currentPage = 0;
         const totalPages = Math.ceil(characterData.length / PAGE_SIZE);
 
-        const createButtonRow = () => new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('prev')
-            .setLabel('⬅️ Anterior')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPage === 0),
-          new ButtonBuilder()
-            .setCustomId('next')
-            .setLabel('➡️ Siguiente')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(currentPage === totalPages - 1)
-        );
-
         const embedMessage = await message.channel.send({
           embeds: [generateNameOnlyEmbed(`Resultados para "${characterName}"`, characterData, currentPage, totalPages)],
-          components: [createButtonRow()],
+          components: [createButtonRow(currentPage, totalPages)],
         });
 
         const collector = embedMessage.createMessageComponentCollector({ time: 60000 });
@@ -105,20 +93,28 @@ export default {
         collector.on('collect', async (interaction) => {
           if (!interaction.isButton()) return;
 
-          if (interaction.customId === 'prev' && currentPage > 0) {
-            currentPage--;
-          } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
-            currentPage++;
-          }
+          try {
+            if (interaction.customId === 'prev' && currentPage > 0) {
+              currentPage--;
+            } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
+              currentPage++;
+            }
 
-          await interaction.update({
-            embeds: [generateNameOnlyEmbed(`Resultados para "${characterName}"`, characterData, currentPage, totalPages)],
-            components: [createButtonRow()],
-          });
+            await interaction.update({
+              embeds: [generateNameOnlyEmbed(`Resultados para "${characterName}"`, characterData, currentPage, totalPages)],
+              components: [createButtonRow(currentPage, totalPages)],
+            });
+          } catch (error) {
+            console.error('Error al actualizar la interacción:', error);
+          }
         });
 
-        collector.on('end', () => {
-          embedMessage.edit({ components: [] });
+        collector.on('end', async () => {
+          try {
+            await embedMessage.edit({ components: [] });
+          } catch (error) {
+            console.error('Error al editar el mensaje después de que el collector terminó:', error);
+          }
         });
       }
     } catch (error) {
