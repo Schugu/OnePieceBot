@@ -26,7 +26,7 @@ export default {
 
       const embed = new EmbedBuilder()
         .setTitle('GIF encontrado:')
-        .setColor('#0099ff')
+        .setColor('#ff4000')
         .setImage(gif.images.original.url)
         .setURL(gif.url)
         .setFooter({ text: `Búsqueda realizada con Giphy` });
