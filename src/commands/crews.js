@@ -1,6 +1,8 @@
-import { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
+import { createButtonRow } from "../utils/createButtonRow.js";
+import fetch from 'node-fetch';
 
-const PAGE_SIZE = 10; 
+const PAGE_SIZE = 10;
 
 export default {
   name: 'crews',
@@ -32,50 +34,43 @@ export default {
           .setTitle('Crews de One Piece')
           .setColor('#ff4000')
           .setDescription(
-            crewsPage.map((crew, index) => `${start + index + 1}. ${crew.name}`).join('\n')
+            crewsPage.map((crew, index) => `${start + index + 1}. ${crew.name || 'Nombre no disponible'}`).join('\n')
           )
           .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
       };
 
-      const createActionRow = (page) => {
-        return new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId('prev')
-            .setLabel('⬅️ Atrás')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(page === 0), 
-          new ButtonBuilder()
-            .setCustomId('next')
-            .setLabel('➡️ Adelante')
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(page === totalPages - 1)
-        );
-      };
-
       const embedMessage = await message.channel.send({
         embeds: [generateEmbed(currentPage)],
-        components: totalPages > 1 ? [createActionRow(currentPage)] : [], 
+        components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [],
       });
 
-      const collector = embedMessage.createMessageComponentCollector({ time: 300000 }); 
+      const collector = embedMessage.createMessageComponentCollector({ time: 300000 });
 
       collector.on('collect', async (interaction) => {
         if (!interaction.isButton()) return;
 
-        if (interaction.customId === 'prev' && currentPage > 0) {
-          currentPage--;
-        } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
-          currentPage++;
-        }
+        try {
+          if (interaction.customId === 'prev' && currentPage > 0) {
+            currentPage--;
+          } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
+            currentPage++;
+          }
 
-        await interaction.update({
-          embeds: [generateEmbed(currentPage)],
-          components: [createActionRow(currentPage)],
-        });
+          await interaction.update({
+            embeds: [generateEmbed(currentPage)],
+            components: [createButtonRow(currentPage, totalPages)],
+          });
+        } catch (error) {
+          console.error('Error al actualizar la interacción:', error);
+        }
       });
 
-      collector.on('end', () => {
-        embedMessage.edit({ components: [] });
+      collector.on('end', async (collected) => {
+        try {
+          await embedMessage.edit({ components: [] });
+        } catch (error) {
+          console.error('Error al editar el mensaje después de que el collector terminó:', error);
+        }
       });
 
     } catch (error) {
