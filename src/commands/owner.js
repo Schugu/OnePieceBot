@@ -12,7 +12,7 @@ export default {
       const avatar = owner.user.displayAvatarURL({ size: 512 })
 
       const embed = new EmbedBuilder()
-        .setColor('Orange')
+        .setColor('#ff4000')
         .setTitle(`El propietario del servidor es ${owner.user.tag}.`)
         .setImage(avatar);
 
