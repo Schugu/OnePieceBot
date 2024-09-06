@@ -11,7 +11,7 @@ export default {
     const avatar = member.user.displayAvatarURL({ size: 512 })
 
     const embed = new EmbedBuilder()
-      .setColor('Orange')
+      .setColor('#ff4000')
       .setTitle(`Avatar de ${member.user.displayName}`)
       .setImage(avatar);
 
