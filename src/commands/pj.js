@@ -1,41 +1,8 @@
 import fetch from 'node-fetch';
 import { EmbedBuilder } from 'discord.js';
-import { createButtonRow } from "../utils/createButtonRow.js";
+import { generateEmbedMessage } from '../utils/showSearchData/generateEmbedMessage.js';
 
-const PAGE_SIZE = 10;
 const MAX_RETRIES = 3;
-
-const formatCharacterMessage = (character) => `
-  **Nombre**: ${character.name || 'No disponible'}
-  **Altura**: ${character.size || 'No disponible'}
-  **Edad**: ${character.age || 'No disponible'}
-  **Recompensa**: ${character.bounty || 'No disponible'}
-  **Tripulación**: ${character.crew ? character.crew.name : 'No disponible'}
-  **Fruta del diablo**: ${character.fruit ? character.fruit.name : 'No disponible'}
-  **Ocupación**: ${character.job || 'No disponible'}
-  **Estado**: ${character.status || 'No disponible'}
-`;
-
-const formatIdNameChar = (character) => `**${character.id ?? 'X'}**: ${character.name || 'No disponible'}`;
-
-const createDetailedEmbed = (title, characters) => new EmbedBuilder()
-  .setTitle(title)
-  .setColor('#ff4000')
-  .setDescription(characters.map(formatCharacterMessage).join('\n'));
-
-const generateNameOnlyEmbed = (title, characters, page, totalPages) => {
-  const start = page * PAGE_SIZE;
-  const end = start + PAGE_SIZE;
-  const charactersPage = characters.slice(start, end);
-
-  return new EmbedBuilder()
-    .setTitle(title)
-    .setColor('#ff4000')
-    .setDescription(
-      charactersPage.map(formatIdNameChar).join('\n')
-    )
-    .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
-};
 
 const fetchCharacterData = async (url, retries = MAX_RETRIES) => {
   try {
@@ -57,6 +24,19 @@ const fetchCharacterData = async (url, retries = MAX_RETRIES) => {
   }
 };
 
+const formatCharacterMessage = (character) => `
+  **Nombre**: ${character.name || 'No disponible'}
+  **Altura**: ${character.size || 'No disponible'}
+  **Edad**: ${character.age || 'No disponible'}
+  **Recompensa**: ${character.bounty || 'No disponible'}
+  **Tripulación**: ${character.crew ? character.crew.name : 'No disponible'}
+  **Fruta del diablo**: ${character.fruit ? character.fruit.name : 'No disponible'}
+  **Ocupación**: ${character.job || 'No disponible'}
+  **Estado**: ${character.status || 'No disponible'}
+`;
+
+const formatIdNameChar = (character) => `**${character.id ?? 'X'}**: ${character.name || 'No disponible'}`;
+
 export default {
   description: 'Busca información sobre un personaje',
   run: async (message, args) => {
@@ -75,47 +55,20 @@ export default {
       }
 
       if (characterData.length === 1) {
-        const character = characterData[0];
-        await message.reply({ embeds: [createDetailedEmbed(`Información del personaje: ${character.name}`, [character])] });
-      } else if (characterData.length <= 10) {
-        await message.reply({ embeds: [createDetailedEmbed(`Resultados para "${characterName}"`, characterData)] });
+        await message.reply({
+          embeds: [new EmbedBuilder()
+            .setTitle(`Información del personaje: ${characterData[0].name}`)
+            .setColor('#ff4000')
+            .setDescription(formatCharacterMessage(characterData[0]))
+          ]
+        });
       } else {
-        let currentPage = 0;
-        const totalPages = Math.ceil(characterData.length / PAGE_SIZE);
-
-        const embedMessage = await message.channel.send({
-          embeds: [generateNameOnlyEmbed(`Resultados para "${characterName}"`, characterData, currentPage, totalPages)],
-          components: [createButtonRow(currentPage, totalPages)],
-        });
-
-        const collector = embedMessage.createMessageComponentCollector({ time: 60000 });
-
-        collector.on('collect', async (interaction) => {
-          if (!interaction.isButton()) return;
-
-          try {
-            if (interaction.customId === 'prev' && currentPage > 0) {
-              currentPage--;
-            } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
-              currentPage++;
-            }
-
-            await interaction.update({
-              embeds: [generateNameOnlyEmbed(`Resultados para "${characterName}"`, characterData, currentPage, totalPages)],
-              components: [createButtonRow(currentPage, totalPages)],
-            });
-          } catch (error) {
-            console.error('Error al actualizar la interacción:', error);
-          }
-        });
-
-        collector.on('end', async () => {
-          try {
-            await embedMessage.edit({ components: [] });
-          } catch (error) {
-            console.error('Error al editar el mensaje después de que el collector terminó:', error);
-          }
-        });
+        await generateEmbedMessage(
+          message,
+          `Resultados para "${characterName}"`,
+          characterData,
+          formatIdNameChar
+        );
       }
     } catch (error) {
       console.error('Error al obtener información:', error);

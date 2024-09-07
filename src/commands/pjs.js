@@ -1,8 +1,5 @@
 import fetch from 'node-fetch';
-import { EmbedBuilder } from 'discord.js';
-import { createButtonRow } from '../utils/createButtonRow.js';
-
-const PAGE_SIZE = 10;
+import { generateEmbedMessage } from '../utils/showAllData/generateEmbedMessage.js';
 
 export default {
   name: 'characters',
@@ -10,7 +7,6 @@ export default {
   run: async (message) => {
     try {
       const url = 'https://api.api-onepiece.com/v2/characters/en';
-
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -23,52 +19,7 @@ export default {
         return message.reply('No characters found.');
       }
 
-      let currentPage = 0;
-      const totalPages = Math.ceil(characters.length / PAGE_SIZE);
-
-      const generateEmbed = (page) => {
-        const start = page * PAGE_SIZE;
-        const end = start + PAGE_SIZE;
-        const charactersPage = characters.slice(start, end);
-
-        return new EmbedBuilder()
-          .setTitle('Personajes One Piece')
-          .setColor('#ff4000')
-          .setDescription(
-            charactersPage.map((character, index) => `${start + index + 1}. ${character.name}`).join('\n')
-          )
-          .setFooter({ text: `Página ${page + 1} de ${totalPages}` });
-      };
-
-      const embedMessage = await message.channel.send({
-        embeds: [generateEmbed(currentPage)],
-        components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [],
-      });
-
-      const collector = embedMessage.createMessageComponentCollector({ time: 300000 });
-
-      collector.on('collect', async (interaction) => {
-        if (!interaction.isButton()) return;
-
-        if (interaction.customId === 'prev' && currentPage > 0) {
-          currentPage--;
-        } else if (interaction.customId === 'next' && currentPage < totalPages - 1) {
-          currentPage++;
-        }
-
-        await interaction.update({
-          embeds: [generateEmbed(currentPage)],
-          components: totalPages > 1 ? [createButtonRow(currentPage, totalPages)] : [],
-        });
-      });
-
-      collector.on('end', async () => {
-        try {
-          await embedMessage.edit({ components: [] });
-        } catch (error) {
-          console.error('Error editing message after collector ended:', error);
-        }
-      });
+      await generateEmbedMessage(characters, message, 'Personajes One Piece');
 
     } catch (error) {
       console.error('Error fetching characters:', error);
